@@ -16,6 +16,7 @@ def build_parser():
     parser.add_argument('-t', '--targets', required=True, help='exome targets file in bed format')
     parser.add_argument('-l', '--inlist', required=True, help='list of cnv locations')
     parser.add_argument('-m', '--markerout', required=True, help='name of output markerfile')
+    parser.add_argument('-s', '--segout', required=True, help='name of output segmentationfile')
     return parser
 
 def bedToMarkers(bedfile, markerObj, outputfile):
@@ -56,6 +57,11 @@ class markers(object):
     def trim(self, cnv):
         """Trim input start and end coordinate to nearest chromosome coordinate"""
         cfields = cnv.split("\t")
+        if cfields[1] == 'chrom' or cfields[1] == 'chr':
+            print >>sys.stderr, "skipping", cnv
+            return None
+        if cfields[1].startswith('chr'):
+            cfields[1] = cfields[1][3:]
         new = takeClosest(self.chromdict[cfields[1]], int(cfields[2]), "right")
         cfields[2] = new
         new = takeClosest(self.chromdict[cfields[1]], int(cfields[3]), "left")
@@ -90,19 +96,18 @@ markerlist = markers()
 bedToMarkers(args.targets, markerlist, args.markerout)
 markerlist.sort()
 
-sys.exit()
+# Read in file list
+cnvs = []
+with open(args.inlist, 'r') as l:
+    cnvs = l.read().splitlines()
 
-# Now read in list of cnv files and trim them
-
-
-# now parse CNV
-
-f = open(args[1],'r')
-
-for line in f:
-    outline = markerlist.trim(line.strip()) 
-    if outline:
-        print outline
-f.close()
+# Trim every file and concatenate results to segout file
+with open(args.segout, 'w') as s:
+    for file in cnvs:
+        with open(file,'r') as f:
+            for line in f.readlines():
+                outline = markerlist.trim(line.strip()) 
+                if outline:
+                    print >>s, outline 
 
 
