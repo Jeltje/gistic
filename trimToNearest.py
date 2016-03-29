@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python2.7
 
 import sys, os, re, getopt
 import argparse
@@ -27,19 +27,18 @@ def bedToMarkers(bedfile, markerObj, outputfile):
     # markersfile is id, chrom, pos. We need the start and end from the bed input on separate lines
 
     id = 0
-    with open(outputfile, 'w') as w:
-        with open(bedfile, 'r') as f:
-            for line in f.readlines():
-                sample = line.strip().split('\t')
-                (chrom, start, end), rest = sample[:3], sample[3:]
-                if chrom.startswith('chr'):
+    with open(outputfile, 'w') as w, open(bedfile, 'r') as f:
+        for line in f.readlines():
+            sample = line.strip().split('\t')
+            (chrom, start, end), rest = sample[:3], sample[3:]
+            if chrom.startswith('chr'):
                     chrom = chrom[3:]
             markerObj.add(chrom, start)
             markerObj.add(chrom, end)
             id += 1
-            w.write("s{}\t{}\t{}".format(id, chrom, start)
+            w.write("s{}\t{}\t{}\n".format(id, chrom, start))
             id += 1
-            w.write("e{}\t{}\t{}".format(id, chrom, end)
+            w.write("e{}\t{}\t{}\n".format(id, chrom, end))
 
 
 class markers(object):
@@ -90,6 +89,8 @@ markerlist = markers()
 # Create markers and marker output from input bed file
 bedToMarkers(args.targets, markerlist, args.markerout)
 markerlist.sort()
+
+sys.exit()
 
 # Now read in list of cnv files and trim them
 
