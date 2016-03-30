@@ -103,8 +103,8 @@ with open(args.inlist, 'r') as l:
 
 # Trim every file and concatenate results to segout file
 with open(args.segout, 'w') as s:
-    for file in cnvs:
-        with open(file,'r') as f:
+    for infile in cnvs:
+        with open(infile,'r') as f:
             for line in f.readlines():
                 outline = markerlist.trim(line.strip()) 
                 if outline:

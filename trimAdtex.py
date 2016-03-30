@@ -3,6 +3,7 @@
 import sys, os, re, getopt
 import argparse
 from bisect import bisect_left
+from collections import OrderedDict
 
 usage = sys.argv[0]+"""
 
@@ -55,22 +56,27 @@ class markers(object):
         for chr in self.chromdict:
             self.chromdict[chr].sort()
 
-    def trim(self, cnv):
+    def trim(self, cnv, sampleId):
         """Trim input start and end coordinate to nearest chromosome coordinate"""
         cfields = cnv.split("\t")
-        if cfields[1] == 'chrom' or cfields[1] == 'chr':
+        cchrom = cfields[0]
+        #cfields.insert(0, sampleId)
+        if cchrom == 'chrom' or cchrom == 'chr':
             print >>sys.stderr, "skipping", cnv
             return None
-        if cfields[1].startswith('chr'):
-            cfields[1] = cfields[1][3:]
-        new = takeClosest(self.chromdict[cfields[1]], int(cfields[2]), "right")
-        cfields[2] = new
-        new = takeClosest(self.chromdict[cfields[1]], int(cfields[3]), "left")
-        cfields[3] = new
-        if cfields[2] > cfields[3]:
+        if cchrom.startswith('chr'):
+            cchrom = cchrom[3:]
+        cstart = int(cfields[7])
+        cend   = int(cfields[8])
+        new = takeClosest(self.chromdict[cchrom], cstart, "right")
+        cstart = new
+        new = takeClosest(self.chromdict[cchrom], cend, "left")
+        cend = new
+        if cstart > cend:
              print >>sys.stderr, "skipping", cnv
              return None
-	return ("\t").join(str(x) for x in cfields)
+        score = float(cfields[9]) - 1
+        return "{}\t{}\t{}\t{}\t{}\t{}".format(sampleId, cchrom, cstart, cend, 'placeholder', score)  
 
 def takeClosest(myList, myNumber, side):
     """
@@ -83,6 +89,19 @@ def takeClosest(myList, myNumber, side):
         return myList[pos-1]
     if side == "right":
         return myList[pos]
+
+def orderedCount(inputlist):
+    """
+    Leave list items in order, return unique list with linecounts
+    """
+    #uniq = []
+    count = OrderedDict()
+    for i in inputlist:
+        if not i in count:
+            count[i] = 0
+        #    uniq.append(i)
+        count[i] += 1
+    return count
 
 
 # Main
@@ -102,13 +121,27 @@ cnvs = []
 with open(args.inlist, 'r') as l:
     cnvs = l.read().splitlines()
 
+# sampleIds can only occur once
+sampleNames = []
+# adtex is quite repetitive, so keep track of lines we already have
+printLines = []
 # Trim every file and concatenate results to segout file
-with open(args.segout, 'w') as s:
-    for file in cnvs:
-        with open(file,'r') as f:
-            for line in f.readlines():
-                outline = markerlist.trim(line.strip()) 
-                if outline:
-                    print >>s, outline 
+for infile in cnvs:
+    sampleId = os.path.basename(infile).split('.')[0]
+    if sampleId in sampleNames:
+        print >>sys.stderr, "ERROR sample occurs twice (please check filename requirements):", sampleId
+        sys.exit(1)
+    with open(infile,'r') as f:
+        for line in f.readlines():
+            outline = markerlist.trim(line.strip(), sampleId) 
+            if outline: 
+                printLines.append(outline)
 
+# to get the 'coverage' we count the number of identical segments
+# Counter keeps the items in order
+counts = orderedCount(printLines)
+
+with open(args.segout, 'w') as s:
+    for i in counts:
+        print >>s, i.replace('placeholder', str(counts[i]))
 
