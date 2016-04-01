@@ -15,4 +15,6 @@ RUN wget ftp://ftp.broadinstitute.org/pub/GISTIC2.0/GISTIC_2_0_22.tar.gz \
 RUN ./MCRInstaller.bin -P bean421.installLocation="/home/gistic/MATLAB_Compiler_Runtime" -silent
 
 ADD ./run.sh /home/gistic/
-	
+
+ENTRYPOINT ["/bin/bash", "/home/gistic/run.sh"]
+CMD ["-h"]
