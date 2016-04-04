@@ -21,14 +21,20 @@ def build_parser():
     return parser
 
 class markers(object):
+    """
+    Creates a dictionary of chromosome names with SNP coordinates
+    """
     def __init__(self):
         self.chromdict = dict()  
+        # the input is in chromosomal order, easier than trying to sort
+        self.chromOrder = []
     def add(self, chrom, coord):
         if chrom in self.chromdict:
             if not int(coord) in self.chromdict[chrom]:
                 self.chromdict[chrom].append(int(coord))
         else:
             self.chromdict[chrom] = [int(coord)]
+            self.chromOrder.append(chrom)
     def sort(self):
         for chrom in self.chromdict:
             self.chromdict[chrom].sort()
@@ -37,7 +43,7 @@ class markers(object):
 
 class Segment(object):
     """
-    Segment object
+    Segment object, allows extension of segment if input has the same score as previous
     """
     def __init__(self, sample, chrom, pos, score):
         self.sample = sample
@@ -55,10 +61,8 @@ class Segment(object):
     def printLine(self):
         if self.count == 1:
              return False
-        if self.chrom.startswith('chr'):
-           self.chrom = self.chrom[3:]
         # format score
-           self.logscore = math.log(float(self.score),2) -1
+        self.logscore = math.log(float(self.score),2) -1
 	return "{}\t{}\t{}\t{}\t{}\t{:.2f}".format(self.sample, self.chrom, self.startpos, self.endpos, self.count, self.logscore)
 
 def makeSegments(zfile, sampleId, markerList):
@@ -85,10 +89,12 @@ def makeSegments(zfile, sampleId, markerList):
                 segObj = Segment(sampleId, cfields[0], cfields[1], cfields[7])
                 print >>sys.stderr, "skipping", zygline
                 continue
-            if not segObj.add(sampleId, cfields[0], cfields[1], cfields[7]):
-                segObj = Segment(sampleId, cfields[0], cfields[1], cfields[7])
+            if cchrom.startswith('chr'):
+               cchrom = cchrom[3:]
+            if not segObj.add(sampleId, cchrom, cfields[1], cfields[7]):
+                segObj = Segment(sampleId, cchrom, cfields[1], cfields[7])
                 segments.append(segObj)
-            markerList.add(cfields[0], cfields[1])
+            markerList.add(cchrom, cfields[1])
     return segments, markerList
 
 # Main
@@ -107,7 +113,6 @@ with open(args.inlist, 'r') as l:
 # Create markers and segments at the same time 
 # sampleIds can only occur once
 sampleNames = []
-
 with open(args.segout, 'w') as s:
     for infile in cnvs:
         sampleId = os.path.basename(infile).split('.')[0]
@@ -120,4 +125,12 @@ with open(args.segout, 'w') as s:
             if segline:
                 print >>s, segline
 
-# note: must still print markers
+# Now print markers
+id = 0
+markerlist.sort()
+with open(args.markerout, 'w') as w:
+    for c in markerlist.chromOrder:
+        for pos in markerlist.chromdict[c]:
+            id += 1
+            w.write("m{}\t{}\t{}\n".format(id, c, pos))
+
