@@ -2,6 +2,7 @@
 
 import sys, os, re, getopt
 import argparse
+import math
 from bisect import bisect_left
 from collections import OrderedDict
 
@@ -75,7 +76,7 @@ class markers(object):
         if cstart > cend:
              print >>sys.stderr, "skipping", cnv
              return None
-        score = float(cfields[9]) - 1
+        score = math.log(float(cfields[9]),2) -1
         return "{}\t{}\t{}\t{}\t{}\t{}".format(sampleId, cchrom, cstart, cend, 'placeholder', score)  
 
 def takeClosest(myList, myNumber, side):
